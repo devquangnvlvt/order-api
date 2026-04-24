@@ -86,7 +86,7 @@ try {
                 $images = glob($firstColorPath . '/*.{png,svg,webp,jpg,jpeg,PNG,SVG,WEBP,JPG,JPEG}', GLOB_BRACE);
                 foreach ($images as $image) {
                     $imgName = strtolower(basename($image));
-                    if (!in_array($imgName, ['nav.png', 'nav.svg', 'nav.webp'])) {
+                    if (!in_array($imgName, ['nav.png', 'nav.svg', 'nav.webp']) && !str_starts_with($imgName, 'thumb_')) {
                         $quantity++;
                     }
                 }
@@ -95,7 +95,7 @@ try {
                 $images = glob($partPath . '/*.{png,svg,webp,jpg,jpeg,PNG,SVG,WEBP,JPG,JPEG}', GLOB_BRACE);
                 foreach ($images as $image) {
                     $imgName = strtolower(basename($image));
-                    if (!in_array($imgName, ['nav.png', 'nav.svg', 'nav.webp'])) {
+                    if (!in_array($imgName, ['nav.png', 'nav.svg', 'nav.webp']) && !str_starts_with($imgName, 'thumb_')) {
                         $quantity++;
                     }
                 }

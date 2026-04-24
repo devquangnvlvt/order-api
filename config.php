@@ -4,5 +4,6 @@ return [
     'dbname' => 'nestjs01',
     'username' => 'root',
     'password' => '',
-    'upload_path' => 'D:/web/laragon/www/upload',
+    'upload_path' => 'D:\web\laragon\www\cloudflare\asset',
+    'avatar_base_url' => 'http://cloudflare.vn/asset/',
 ];

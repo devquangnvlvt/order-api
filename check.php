@@ -32,9 +32,23 @@ try {
         $stmt->execute([$tableName]);
         if ($stmt->fetch()) {
             $response['tableExists'] = true;
-            // Get unique positions from the table
-            $stmtPos = $pdo->query("SELECT DISTINCT `position` FROM `{$tableName}` ORDER BY `position` ASC");
-            $response['positions'] = $stmtPos->fetchAll(PDO::FETCH_COLUMN);
+            // Get unique positions and their levels from the table
+            $stmtPos = $pdo->query("SELECT `position`, MIN(`level`) as level FROM `{$tableName}` GROUP BY `position` ORDER BY `level` ASC, `position` ASC");
+            $positions = $stmtPos->fetchAll(PDO::FETCH_ASSOC);
+
+            // Check for avatar.png for each position
+            if ($savePath) {
+                $cleanSavePath = rtrim(str_replace(['..', '\\'], ['', '/'], $savePath), '/');
+                foreach ($positions as &$item) {
+                    $avatarPath = $cleanSavePath . '/' . $item['position'] . '/avatar.png';
+                    if (file_exists($avatarPath)) {
+                        $item['hasAvatar'] = true;
+                    } else {
+                        $item['hasAvatar'] = false;
+                    }
+                }
+            }
+            $response['positions'] = $positions;
         }
     }
 

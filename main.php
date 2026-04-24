@@ -14,6 +14,7 @@ $config = include(__DIR__ . '/config.php');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Folder Upload & SQL Generator</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/resumable.js/1.1.0/resumable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -27,37 +28,72 @@ $config = include(__DIR__ . '/config.php');
             font-family: 'Inter', sans-serif;
             background-color: var(--bg);
             color: var(--text);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
             margin: 0;
+            padding: 1rem;
+            min-height: 100vh;
+            box-sizing: border-box;
         }
 
-        .container {
+        .main-layout {
+            display: flex;
+            gap: 1.5rem;
+
+            margin: 0 auto;
+            height: calc(100vh - 2rem);
+        }
+
+        .column {
             background-color: var(--card);
-            padding: 2rem;
             border-radius: 1rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            width: 100%;
-            max-width: 500px;
-            position: relative;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .col-form {
+            flex: 1.5;
+            min-width: 400px;
+        }
+
+        .col-sql {
+            flex: 2;
+            min-width: 500px;
+        }
+
+        .col-queue {
+            flex: 1.2;
+            min-width: 350px;
+        }
+
+        .col-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #334155;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .col-header h2 {
+            font-size: 1.1rem;
+            margin: 0;
+            color: var(--primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .col-body {
+            padding: 1.5rem;
+            overflow-y: auto;
+            flex: 1;
         }
 
         .logout-link {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
             color: #94a3b8;
             font-size: 0.75rem;
             text-decoration: none;
         }
-        .logout-link:hover { color: var(--primary); }
 
-        h1 {
-            font-size: 1.5rem;
-            margin-bottom: 1.5rem;
-            text-align: center;
+        .logout-link:hover {
             color: var(--primary);
         }
 
@@ -96,7 +132,7 @@ $config = include(__DIR__ . '/config.php');
         }
 
         .progress-container {
-            margin-top: 2rem;
+            margin-top: 1rem;
             display: none;
         }
 
@@ -132,66 +168,327 @@ $config = include(__DIR__ . '/config.php');
             font-weight: 600;
             margin-top: 1rem;
         }
+
+        .pos-tag {
+            display: inline-flex;
+            align-items: center;
+            background: #334155;
+            color: #f8fafc;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            margin: 0.25rem;
+            border: 1px solid #475569;
+        }
+
+        .pos-tag .delete-pos {
+            margin-left: 0.5rem;
+            color: #f87171;
+            cursor: pointer;
+            font-weight: bold;
+            padding: 0 2px;
+        }
+
+        .pos-tag .delete-pos:hover {
+            color: #ef4444;
+        }
+
+        #sqlOutput {
+            width: 100%;
+            height: 100%;
+            background: #0f172a;
+            color: #10b981;
+            border: none;
+            padding: 1rem;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
+            resize: none;
+            box-sizing: border-box;
+            display: block;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid #334155;
+        }
+
+        .tab-btn {
+            padding: 0.75rem 1rem;
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+            height: 100%;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .sort-list {
+            list-style: none;
+            padding: 1rem;
+            margin: 0;
+        }
+
+        .sort-item {
+            background: #1e293b;
+            border: 1px solid #334155;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            cursor: grab;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .sort-item:hover {
+            background: #334155;
+        }
+
+        .sort-item .lvl-badge {
+            background: var(--primary);
+            color: white;
+            padding: 0.1rem 0.4rem;
+            border-radius: 0.25rem;
+            font-size: 0.7rem;
+            margin-right: 1rem;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .sort-item .drag-handle {
+            margin-left: auto;
+            color: #475569;
+        }
+
+        .ghost {
+            opacity: 0.5;
+            background: #3b82f6 !important;
+        }
+
+        .copy-btn {
+            background: #334155;
+            color: white;
+            border: none;
+            padding: 0.3rem 0.6rem;
+            border-radius: 0.3rem;
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+
+        .copy-btn:hover {
+            background: #475569;
+        }
+
+        #fileList {
+            background: #0f172a;
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .avatar-card {
+            text-align: center;
+            background: #1e293b;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid #334155;
+            position: relative;
+            transition: border-color 0.3s;
+        }
+
+        .avatar-card:hover {
+            border-color: var(--primary);
+        }
+
+        .avatar-card img {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1/1;
+            object-fit: cover;
+            border-radius: 0.25rem;
+            display: block;
+            margin-bottom: 0.5rem;
+            background: #0f172a;
+        }
+
+        .avatar-upload-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: rgba(15, 23, 42, 0.8);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 0.8rem;
+            border: 1px solid #334155;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .avatar-card:hover .avatar-upload-btn {
+            opacity: 1;
+        }
+
+        .avatar-upload-btn:hover {
+            background: var(--primary);
+        }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <a href="logout.php" class="logout-link">Đăng xuất</a>
-        <h1>Folder Upload & SQL Generator</h1>
-
-        <div class="form-group">
-            <label for="tableName">Tên bảng SQL của bạn: <span id="tableStatus" style="font-size: 0.75rem; font-weight: normal; margin-left: 0.5rem;"></span></label>
-            <input type="text" id="tableName" placeholder="VD: ST193_PixcelMaker" value="" list="tableNameList">
-            <datalist id="tableNameList"></datalist>
-        </div>
-
-        <div id="tableOptions" style="display: none; margin-top: 1.5rem; padding: 1rem; background: #1e293b; border-radius: 0.5rem; border: 1px solid #334155;">
-            <div id="existingPositions" style="font-size: 0.75rem; color: #60a5fa; margin-bottom: 1rem; line-height: 1.4;"></div>
-            <button id="truncateBtn" class="btn" style="background: #ef4444; font-size: 0.75rem; padding: 0.5rem 1rem; margin-top: 0; width: auto;">Xóa trắng bảng (TRUNCATE)</button>
-        </div>
-
-        <?php $basePath = $config['upload_path'] ?? 'D:/web/laragon/www/upload'; ?>
-        <div class="form-group">
-            <label for="subFolder">Chọn hoặc nhập tên Folder con tại: <span style="color: #60a5fa"><?php echo $basePath; ?></span></label>
-            <div style="display: flex; gap: 0.5rem;">
-                <input type="text" id="subFolder" list="folderList" placeholder="Trống = Upload trực tiếp vào thư mục gốc" style="flex: 1; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #334155; background: #0f172a; color: white;">
-                <datalist id="folderList"></datalist>
+    <div class="main-layout">
+        <!-- Cột 1: Form Upload -->
+        <div class="column col-form">
+            <div class="col-header">
+                <h2>
+                    <span>Cấu hình & Upload</span>
+                    <a href="logout.php" class="logout-link">Đăng xuất</a>
+                </h2>
             </div>
-            <input type="hidden" id="savePath" value="<?php echo htmlspecialchars($basePath); ?>">
-        </div>
+            <div class="col-body">
+                <div class="form-group">
+                    <label for="tableName">Tên bảng SQL của bạn: <span id="tableStatus"
+                            style="font-size: 0.75rem; font-weight: normal; margin-left: 0.5rem;"></span></label>
+                    <input type="text" id="tableName" placeholder="VD: ST193_PixcelMaker" value="" list="tableNameList">
+                    <datalist id="tableNameList"></datalist>
+                </div>
 
-        <div class="upload-area" id="dropTarget">
-            <p>Kéo thả hoặc nhấn để chọn <b>Thư mục (Folder)</b> bộ ảnh</p>
-            <p style="font-size: 0.75rem; color: #94a3b8;">Có thể chọn nhiều folder lần lượt để thêm vào hàng đợi</p>
-            <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none">
-            <button class="btn" style="background: #1e293b; border: 1px solid var(--primary);"
-                onclick="document.getElementById('folderInput').click()">+ Thêm Folder</button>
-        </div>
+                <div id="tableOptions"
+                    style="display: none; margin-bottom: 1.5rem; padding: 1rem; background: #1e293b; border-radius: 0.5rem; border: 1px solid #334155;">
+                    <div id="existingPositions"
+                        style="font-size: 0.75rem; color: #60a5fa; margin-bottom: 1rem; line-height: 1.4;"></div>
+                    <button id="truncateBtn" class="btn"
+                        style="background: #ef4444; font-size: 0.75rem; padding: 0.5rem 1rem; margin-top: 0; width: auto;">Xóa
+                        TOÀN BỘ bảng</button>
+                </div>
 
-        <div id="fileListContainer" style="margin-top: 1rem; display: none;">
-            <label>Hàng đợi upload:</label>
-            <div id="fileList"
-                style="max-height: 150px; overflow-y: auto; background: #0f172a; border-radius: 0.5rem; padding: 0.5rem; font-size: 0.75rem; color: #94a3b8;">
+                <?php $basePath = $config['upload_path'] ?? 'D:/web/laragon/www/upload'; ?>
+                <div class="form-group">
+                    <label for="subFolder">Chọn hoặc nhập tên Folder con tại: <span
+                            style="color: #60a5fa"><?php echo $basePath; ?></span></label>
+                    <input type="text" id="subFolder" list="folderList"
+                        placeholder="Trống = Upload trực tiếp vào thư mục gốc">
+                    <datalist id="folderList"></datalist>
+                    <input type="hidden" id="savePath" value="<?php echo htmlspecialchars($basePath); ?>">
+                </div>
+
+                <div class="upload-area" id="dropTarget">
+                    <p>Kéo thả hoặc nhấn để chọn <b>Thư mục (Folder)</b> bộ ảnh</p>
+                    <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none">
+                    <button class="btn" style="background: #1e293b; border: 1px solid var(--primary);"
+                        onclick="document.getElementById('folderInput').click()">+ Thêm Folder</button>
+                </div>
+
+                <div id="alertArea"
+                    style="margin-top: 1rem; padding: 0.75rem; border-radius: 0.5rem; background: #1e293b; border: 1px solid #334155; font-size: 0.875rem; display: none; line-height: 1.5;">
+                </div>
+
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div id="status">Đang tải lên... <span id="percent">0</span>%</div>
+                </div>
+
+                <div style="border-top: 1px solid #334155; margin-top: 1.5rem; padding-top: 1.5rem;">
+                    <div id="fileListContainer" style="display: none; height: auto; flex-direction: column;">
+                        <label style="margin-bottom: 0.5rem; display: block;">Hàng đợi Upload:</label>
+                        <div id="fileList"
+                            style="max-height: 200px; margin-bottom: 1rem; background: #0f172a; border-radius: 0.5rem; padding: 0.5rem; font-size: 0.75rem; color: #94a3b8; overflow-y: auto;">
+                        </div>
+                        <button class="btn" id="startBtn">Bắt đầu Upload</button>
+                        <div id="fileErrors"
+                            style="margin-top: 1rem; font-size: 0.75rem; color: #f87171; max-height: 150px; overflow-y: auto;">
+                        </div>
+                    </div>
+                    <div id="emptyQueue" style="color: #94a3b8; font-size: 0.875rem; text-align: center;">
+                        Chưa có folder nào được chọn.
+                    </div>
+                </div>
             </div>
-            <button class="btn" id="startBtn" style="margin-top: 1rem;">Bắt đầu Upload</button>
         </div>
 
-        <div id="alertArea"
-            style="margin-top: 1rem; padding: 0.75rem; border-radius: 0.5rem; background: #1e293b; border: 1px solid #334155; font-size: 0.875rem; display: none; line-height: 1.5;">
-        </div>
-
-        <div class="progress-container" id="progressContainer">
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
+        <!-- Cột 2: SQL Insert & Sắp xếp -->
+        <div class="column col-sql">
+            <div class="col-header" style="border-bottom: none; padding-bottom: 0;">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 0.5rem;">
+                    <h2 style="margin: 0;">Quản lý Dữ liệu</h2>
+                    <div id="sqlControls">
+                        <button class="copy-btn" onclick="copySQL()">Copy SQL</button>
+                    </div>
+                </div>
             </div>
-            <div id="status">Đang tải lên... <span id="percent">0</span>%</div>
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('tabSQL', this)">Mã INSERT SQL</button>
+                <button class="tab-btn" onclick="switchTab('tabLevels', this)">Sắp xếp Level</button>
+            </div>
+
+            <div id="tabSQL" class="tab-content active" style="padding: 0; background: #0f172a;">
+                <textarea id="sqlOutput" readonly
+                    placeholder="Câu lệnh SQL INSERT sẽ hiện tại đây sau khi bạn chọn bảng..."></textarea>
+            </div>
+
+            <div id="tabLevels" class="tab-content">
+                <div style="padding: 1rem; font-size: 0.75rem; color: #94a3b8; border-bottom: 1px solid #334155;">
+                    💡 Kéo thả để thay đổi thứ tự. Level sẽ tự động cập nhật từ trên xuống dưới (1 -> n).
+                </div>
+                <ul id="sortableList" class="sort-list">
+                    <li style="text-align: center; color: #475569; margin-top: 2rem;">Vui lòng chọn bảng có dữ liệu...
+                    </li>
+                </ul>
+            </div>
         </div>
 
-        <div id="fileErrors" style="margin-top: 1rem; font-size: 0.75rem; color: #f87171; max-height: 100px; overflow-y: auto;"></div>
+        <!-- Cột 3: Avatar Preview -->
+        <div class="column col-queue">
+            <div class="col-header">
+                <h2>Avatar Positions</h2>
+            </div>
+            <div class="col-body" style="padding: 1rem;">
+                <div id="avatarList"
+                    style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem;">
+                    <div style="grid-column: 1/-1; text-align: center; color: #475569; padding: 2rem 0;">Chọn bảng để
+                        xem avatar...</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
+        const avatarBaseUrl = '<?php echo rtrim($config['avatar_base_url'], '/'); ?>';
+        const baseUploadPath = '<?php echo rtrim(str_replace('\\', '/', $config['upload_path']), '/'); ?>';
+
         const tableNameInput = document.getElementById('tableName');
         const tableStatus = document.getElementById('tableStatus');
         const tableOptions = document.getElementById('tableOptions');
@@ -249,28 +546,229 @@ $config = include(__DIR__ . '/config.php');
             if (!table) {
                 tableStatus.innerText = '';
                 tableOptions.style.display = 'none';
+                document.getElementById('sqlOutput').value = '';
+                document.getElementById('avatarList').innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #475569; padding: 2rem 0;">Chọn bảng để xem avatar...</div>';
                 return;
             }
-            fetch(`check.php?tableName=${encodeURIComponent(table)}`)
+            const currentSavePath = getFullSavePath();
+            fetch(`check.php?tableName=${encodeURIComponent(table)}&savePath=${encodeURIComponent(currentSavePath)}`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.tableExists) {
                         tableStatus.innerHTML = '<span style="color: #4ade80">✅ Đã tồn tại</span>';
                         tableOptions.style.display = 'block';
+
+                        const avatarList = document.getElementById('avatarList');
+                        avatarList.innerHTML = '';
+
                         if (data.positions && data.positions.length > 0) {
-                            existingPositions.innerHTML = `<b>Các Position đã có:</b> ${data.positions.join(', ')}`;
+                            existingPositions.innerHTML = '<b>Các Position đã có (Nhấn dấu x để xóa):</b><br>';
+                            const sortList = document.getElementById('sortableList');
+                            sortList.innerHTML = '';
+
+                            // Calculate relative URL path
+                            let relativePath = currentSavePath.replace(/\\/g, '/').replace(baseUploadPath, '').replace(/^\//, '');
+                            if (relativePath && !relativePath.endsWith('/')) relativePath += '/';
+
+                            data.positions.forEach(item => {
+                                // Column 1 Tags
+                                const tag = document.createElement('span');
+                                tag.className = 'pos-tag';
+                                tag.innerHTML = `<span style="color: #94a3b8; margin-right: 0.4rem;">Level.${item.level}</span> <b>${item.position}</b> <span class="delete-pos" onclick="deletePosition('${item.position}')" title="Xóa position này">×</span>`;
+                                existingPositions.appendChild(tag);
+
+                                // Column 2 Draggable List
+                                const li = document.createElement('li');
+                                li.className = 'sort-item';
+                                li.dataset.name = item.position;
+                                li.innerHTML = `
+                                    <span class="lvl-badge">Lvl.${item.level}</span>
+                                    <span>${item.position}</span>
+                                    <span class="drag-handle">☰</span>
+                                `;
+                                sortList.appendChild(li);
+
+                                // Column 3 Avatars
+                                const av = document.createElement('div');
+                                av.className = 'avatar-card';
+                                av.id = `card-${item.position}`;
+
+                                let relativePath = currentSavePath.replace(/\\/g, '/').replace(baseUploadPath, '').replace(/^\//, '');
+                                if (relativePath && !relativePath.endsWith('/')) relativePath += '/';
+
+                                const imgUrl = item.hasAvatar
+                                    ? `${avatarBaseUrl}/${relativePath}${item.position}/avatar.png?v=${Date.now()}`
+                                    : 'https://via.placeholder.com/150?text=No+Avatar';
+
+                                av.innerHTML = `
+                                    <label class="avatar-upload-btn" title="Thay thế avatar">
+                                        <input type="file" style="display:none" onchange="uploadAvatar('${item.position}', this)" accept="image/*">
+                                        ↑
+                                    </label>
+                                    <img src="${imgUrl}" id="img-${item.position}">
+                                    <div style="font-size: 0.6rem; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.position}">${item.position}</div>
+                                `;
+                                avatarList.appendChild(av);
+                            });
                         } else {
                             existingPositions.innerText = 'Bảng trống (chưa có dữ liệu).';
+                            document.getElementById('sortableList').innerHTML = '<li style="text-align: center; color: #475569; margin-top: 2rem;">Bảng trống</li>';
+                            avatarList.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #475569; padding: 2rem 0;">Bảng trống</div>';
                         }
+                        fetchSQL(); // Refresh SQL output
                     } else {
                         tableStatus.innerHTML = '<span style="color: #60a5fa">ℹ️ Chưa có (Sẽ tạo mới)</span>';
                         tableOptions.style.display = 'none';
+                        document.getElementById('sqlOutput').value = '-- Bảng chưa tồn tại --';
+                        document.getElementById('avatarList').innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #475569; padding: 2rem 0;">Bảng chưa tồn tại</div>';
                     }
                 })
                 .catch(() => {
                     tableStatus.innerText = '';
                     tableOptions.style.display = 'none';
                 });
+        }
+
+        function fetchSQL() {
+            const table = tableNameInput.value.trim();
+            if (!table) return;
+
+            fetch(`get_sql.php?tableName=${encodeURIComponent(table)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.sql) {
+                        document.getElementById('sqlOutput').value = data.sql;
+                    } else if (data.error) {
+                        document.getElementById('sqlOutput').value = '-- Lỗi: ' + data.error;
+                    }
+                });
+        }
+
+        function copySQL() {
+            const sql = document.getElementById('sqlOutput');
+            sql.select();
+            document.execCommand('copy');
+            const btn = document.querySelector('.copy-btn');
+            const oldText = btn.innerText;
+            btn.innerText = 'Đã Copy!';
+            setTimeout(() => btn.innerText = oldText, 2000);
+        }
+
+        function uploadAvatar(pos, input) {
+            if (!input.files || !input.files[0]) return;
+
+            const file = input.files[0];
+            const currentSavePath = getFullSavePath();
+            const posPath = currentSavePath.replace(/\/$/, '') + '/' + pos;
+
+            const formData = new FormData();
+            formData.append('avatar', file);
+            formData.append('position', pos);
+            formData.append('savePath', posPath);
+
+            const card = document.getElementById(`card-${pos}`);
+            const img = document.getElementById(`img-${pos}`);
+
+            card.style.opacity = '0.5';
+
+            fetch('upload_avatar.php', {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Update image with cache buster
+                        const oldSrc = img.src.split('?')[0];
+                        img.src = oldSrc + '?v=' + Date.now();
+                    } else {
+                        alert('Lỗi upload avatar: ' + data.error);
+                    }
+                })
+                .catch(err => alert('Lỗi kết nối: ' + err.message))
+                .finally(() => {
+                    card.style.opacity = '1';
+                    input.value = ''; // Reset input
+                });
+        }
+
+        function switchTab(tabId, btn) {
+            // Update buttons
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Update content
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+
+            // Show/Hide SQL controls
+            document.getElementById('sqlControls').style.visibility = (tabId === 'tabSQL') ? 'visible' : 'hidden';
+        }
+
+        // Initialize Sortable
+        const sortableList = document.getElementById('sortableList');
+        Sortable.create(sortableList, {
+            animation: 150,
+            ghostClass: 'ghost',
+            onEnd: function () {
+                updateLevelsInDB();
+            }
+        });
+
+        function updateLevelsInDB() {
+            const table = tableNameInput.value.trim();
+            if (!table) return;
+
+            const positions = [];
+            document.querySelectorAll('#sortableList .sort-item').forEach(item => {
+                positions.push(item.dataset.name);
+            });
+
+            const formData = new FormData();
+            formData.append('tableName', table);
+            positions.forEach(p => formData.append('positions[]', p));
+
+            fetch('update_levels.php', {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Update badges in UI without full refresh for smoothness
+                        document.querySelectorAll('#sortableList .sort-item').forEach((item, index) => {
+                            item.querySelector('.lvl-badge').innerText = `Lvl.${index + 1}`;
+                        });
+                        // Still need to refresh SQL and Col 1 tags
+                        checkTable();
+                    } else {
+                        alert('Lỗi cập nhật level: ' + data.error);
+                    }
+                })
+                .catch(err => console.error('Lỗi kết nối:', err));
+        }
+
+        function deletePosition(pos) {
+            const table = tableNameInput.value.trim();
+            if (!table || !confirm(`Xác nhận xóa position "${pos}" và toàn bộ dữ liệu liên quan trong bảng "${table}"?`)) return;
+
+            const formData = new FormData();
+            formData.append('tableName', table);
+            formData.append('positions[]', pos);
+
+            fetch('delete_positions.php', {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        checkTable(); // Refresh
+                    } else {
+                        alert('Lỗi: ' + data.error);
+                    }
+                })
+                .catch(err => alert('Lỗi kết nối: ' + err.message));
         }
 
         truncateBtn.addEventListener('click', () => {
@@ -307,11 +805,10 @@ $config = include(__DIR__ . '/config.php');
         });
 
         tableNameInput.addEventListener('input', checkTable);
+        subFolderInput.addEventListener('input', checkTable);
         subFolderInput.addEventListener('change', () => {
             const val = subFolderInput.value.trim();
             if (val) {
-                // If ending with / or we just want to see what's inside
-                // We'll update the list for next selection
                 fetchFolders(val);
             } else {
                 fetchFolders();
@@ -364,7 +861,8 @@ $config = include(__DIR__ . '/config.php');
                 pendingFiles = [];
             }, 100);
 
-            fileListContainer.style.display = 'block';
+            fileListContainer.style.display = 'flex';
+            document.getElementById('emptyQueue').style.display = 'none';
             const item = document.createElement('div');
             item.innerText = `• ${file.relativePath}`;
             fileList.appendChild(item);
@@ -385,7 +883,7 @@ $config = include(__DIR__ . '/config.php');
                 const path = f.webkitRelativePath || f.relativePath || f.name;
                 return path.split('/')[0];
             }))];
-            
+
             const alertDiv = document.getElementById('alertArea');
             alertDiv.innerHTML = 'Đang kiểm tra...';
             alertDiv.style.display = 'block';
@@ -465,6 +963,7 @@ $config = include(__DIR__ . '/config.php');
                 .then(data => {
                     if (data.status === 'success') {
                         statusDiv.innerHTML = `<span style="color: #4ade80">Thành công! Đã chèn ${data.inserted_count} dòng vào bảng ${data.table}.</span>`;
+                        checkTable(); // Refresh positions and SQL
                         // Thêm nút để upload tiếp
                         const resetBtn = document.createElement('button');
                         resetBtn.className = 'btn';
