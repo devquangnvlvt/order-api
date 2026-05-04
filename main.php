@@ -12,7 +12,7 @@ $config = include(__DIR__ . '/config.php');
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Folder Upload & SQL Generator</title>
+    <title>Api</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/resumable.js/1.1.0/resumable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
@@ -383,13 +383,25 @@ $config = include(__DIR__ . '/config.php');
                     <datalist id="tableNameList"></datalist>
                 </div>
 
+                <div class="form-group">
+                    <label>Định dạng cấu trúc bảng:</label>
+                    <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+                        <label style="font-weight: normal; font-size: 0.85rem; cursor: pointer;">
+                            <input type="radio" name="tableFormat" value="1" checked> Chuẩn (6 cột)
+                        </label>
+                        <label style="font-weight: normal; font-size: 0.85rem; cursor: pointer;">
+                            <input type="radio" name="tableFormat" value="2"> Mở rộng (thêm cột data)
+                        </label>
+                    </div>
+                </div>
+
                 <div id="tableOptions"
                     style="display: none; margin-bottom: 1.5rem; padding: 1rem; background: #1e293b; border-radius: 0.5rem; border: 1px solid #334155;">
                     <div id="existingPositions"
                         style="font-size: 0.75rem; color: #60a5fa; margin-bottom: 1rem; line-height: 1.4;"></div>
                     <button id="truncateBtn" class="btn"
                         style="background: #ef4444; font-size: 0.75rem; padding: 0.5rem 1rem; margin-top: 0; width: auto;">Xóa
-                        TOÀN BỘ bảng</button>
+                        toàn bộ bảng</button>
                 </div>
 
                 <?php $basePath = $config['upload_path'] ?? 'D:/web/laragon/www/upload'; ?>
@@ -473,7 +485,7 @@ $config = include(__DIR__ . '/config.php');
         <!-- Cột 3: Avatar Preview -->
         <div class="column col-queue">
             <div class="col-header">
-                <h2>Avatar Positions</h2>
+                <h2>Avatar data</h2>
             </div>
             <div class="col-body" style="padding: 1rem;">
                 <div id="avatarList"
@@ -619,7 +631,7 @@ $config = include(__DIR__ . '/config.php');
                     } else {
                         tableStatus.innerHTML = '<span style="color: #60a5fa">ℹ️ Chưa có (Sẽ tạo mới)</span>';
                         tableOptions.style.display = 'none';
-                        document.getElementById('sqlOutput').value = '-- Bảng chưa tồn tại --';
+                        document.getElementById('sqlOutput').value = '-- Bảng chưa tồn tại or sai cấu trúc bảng --';
                         document.getElementById('avatarList').innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #475569; padding: 2rem 0;">Bảng chưa tồn tại</div>';
                     }
                 })
@@ -949,6 +961,11 @@ $config = include(__DIR__ . '/config.php');
             const formData = new FormData();
             formData.append('tableName', tableNameInput.value.trim());
             formData.append('savePath', getFullSavePath());
+
+            const formatRadio = document.querySelector('input[name="tableFormat"]:checked');
+            if (formatRadio) {
+                formData.append('tableFormat', formatRadio.value);
+            }
 
             fetch('process.php', {
                 method: 'POST',

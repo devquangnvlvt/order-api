@@ -8,6 +8,7 @@ $config = include(__DIR__ . '/config.php');
 // Get the target table name and save path from POST
 $tableName = $_POST['tableName'] ?? '';
 $savePath = $_POST['savePath'] ?? '';
+$tableFormat = $_POST['tableFormat'] ?? '1';
 
 if (!$tableName) {
     die(json_encode(['error' => 'Table name is required']));
@@ -34,14 +35,26 @@ try {
     }
 
     // 1. Create table if not exists
-    $sqlCreate = "CREATE TABLE IF NOT EXISTS `{$tableName}` (
-        `id` INT AUTO_INCREMENT PRIMARY KEY,
-        `position` VARCHAR(255),
-        `parts` VARCHAR(255),
-        `colorArray` TEXT,
-        `quantity` INT,
-        `level` INT
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+    if ($tableFormat == '2') {
+        $sqlCreate = "CREATE TABLE IF NOT EXISTS `{$tableName}` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `position` VARCHAR(255),
+            `parts` VARCHAR(255),
+            `colorArray` TEXT,
+            `quantity` INT,
+            `level` INT,
+            `data` VARCHAR(255)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+    } else {
+        $sqlCreate = "CREATE TABLE IF NOT EXISTS `{$tableName}` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `position` VARCHAR(255),
+            `parts` VARCHAR(255),
+            `colorArray` TEXT,
+            `quantity` INT,
+            `level` INT
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+    }
     $pdo->exec($sqlCreate);
 
     // 2. Scan folders
@@ -122,17 +135,28 @@ try {
 
     // 4. Insert into database
     if (!empty($results)) {
-        $sqlInsert = "INSERT INTO `{$tableName}` (`position`, `parts`, `colorArray`, `quantity`, `level`) VALUES ";
+        if ($tableFormat == '2') {
+            $sqlInsert = "INSERT INTO `{$tableName}` (`position`, `parts`, `colorArray`, `quantity`, `level`, `data`) VALUES ";
+        } else {
+            $sqlInsert = "INSERT INTO `{$tableName}` (`position`, `parts`, `colorArray`, `quantity`, `level`) VALUES ";
+        }
         $placeholders = [];
         $values = [];
 
         foreach ($results as $row) {
-            $placeholders[] = "(?, ?, ?, ?, ?)";
+            if ($tableFormat == '2') {
+                $placeholders[] = "(?, ?, ?, ?, ?, ?)";
+            } else {
+                $placeholders[] = "(?, ?, ?, ?, ?)";
+            }
             $values[] = $row['position'];
             $values[] = $row['parts'];
             $values[] = $row['colorArray'];
             $values[] = $row['quantity'];
             $values[] = $row['level'];
+            if ($tableFormat == '2') {
+                $values[] = basename($finalBaseDir);
+            }
         }
 
         $sqlInsert .= implode(', ', $placeholders);

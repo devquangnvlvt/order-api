@@ -30,7 +30,13 @@ try {
         exit;
     }
 
-    $sql = "INSERT INTO `{$tableName}` (`id`, `position`, `parts`, `colorArray`, `quantity`, `level`) VALUES\n";
+    $hasDataColumn = array_key_exists('data', $rows[0]);
+    if ($hasDataColumn) {
+        $sql = "INSERT INTO `{$tableName}` (`id`, `position`, `parts`, `colorArray`, `quantity`, `level`, `data`) VALUES\n";
+    } else {
+        $sql = "INSERT INTO `{$tableName}` (`id`, `position`, `parts`, `colorArray`, `quantity`, `level`) VALUES\n";
+    }
+    
     $values = [];
     foreach ($rows as $row) {
         $id = (int)$row['id'];
@@ -39,7 +45,13 @@ try {
         $colors = addslashes($row['colorArray']);
         $qty = (int)$row['quantity'];
         $lvl = (int)$row['level'];
-        $values[] = "({$id}, '{$pos}', '{$parts}', '{$colors}', {$qty}, {$lvl})";
+        
+        if ($hasDataColumn) {
+            $data = addslashes((string)$row['data']);
+            $values[] = "({$id}, '{$pos}', '{$parts}', '{$colors}', {$qty}, {$lvl}, '{$data}')";
+        } else {
+            $values[] = "({$id}, '{$pos}', '{$parts}', '{$colors}', {$qty}, {$lvl})";
+        }
     }
     $sql .= implode(",\n", $values) . ";";
 
