@@ -19,7 +19,7 @@ if (!$savePath) {
 
 $finalBaseDir = rtrim(str_replace(['..', '\\'], ['', '/'], $savePath), '/');
 
-set_time_limit(0); 
+set_time_limit(0);
 ini_set('memory_limit', '512M');
 
 try {
@@ -62,8 +62,9 @@ try {
     $level = 0;
 
     // Get the first level of directories (Positions)
-    $positions = array_filter(glob($finalBaseDir . '/*'), function($dir) {
-        return is_dir($dir) && strtolower(basename($dir)) !== 'thumbs';
+    $positions = array_filter(glob($finalBaseDir . '/*'), function ($dir) {
+        $baseName = strtolower(basename($dir));
+        return is_dir($dir) && $baseName !== 'thumbs' && $baseName !== 'bg';
     });
     sort($positions);
 
@@ -72,7 +73,7 @@ try {
         $posName = basename($posPath);
 
         // Get the second level of directories (Parts)
-        $parts = array_filter(glob($posPath . '/*'), function($dir) {
+        $parts = array_filter(glob($posPath . '/*'), function ($dir) {
             return is_dir($dir) && strtolower(basename($dir)) !== 'thumbs';
         });
         sort($parts);
@@ -83,7 +84,7 @@ try {
             $quantity = 0;
 
             // Check for subdirectories (Color folders)
-            $colors = array_filter(glob($partPath . '/*'), function($dir) {
+            $colors = array_filter(glob($partPath . '/*'), function ($dir) {
                 return is_dir($dir) && strtolower(basename($dir)) !== 'thumbs';
             });
             sort($colors);

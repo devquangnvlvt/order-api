@@ -362,6 +362,33 @@ $config = include(__DIR__ . '/config.php');
         .avatar-upload-btn:hover {
             background: var(--primary);
         }
+
+        .avatar-download-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 2.2rem;
+            background: rgba(15, 23, 42, 0.8);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 0.8rem;
+            border: 1px solid #334155;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .avatar-card:hover .avatar-download-btn {
+            opacity: 1;
+        }
+
+        .avatar-download-btn:hover {
+            background: #10b981;
+        }
     </style>
 </head>
 
@@ -438,7 +465,12 @@ $config = include(__DIR__ . '/config.php');
                         <div id="fileList"
                             style="max-height: 200px; margin-bottom: 1rem; background: #0f172a; border-radius: 0.5rem; padding: 0.5rem; font-size: 0.75rem; color: #94a3b8; overflow-y: auto;">
                         </div>
-                        <button class="btn" id="startBtn">Bắt đầu Upload</button>
+                        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                            <button class="btn" id="startBtn" style="margin-top: 0; background: #3b82f6;">Thêm vào
+                                MySQL</button>
+                            <button class="btn" id="startNoSqlBtn" style="margin-top: 0; background: #64748b;">Không
+                                thêm vào MySQL</button>
+                        </div>
                         <div id="fileErrors"
                             style="margin-top: 1rem; font-size: 0.75rem; color: #f87171; max-height: 150px; overflow-y: auto;">
                         </div>
@@ -617,6 +649,9 @@ $config = include(__DIR__ . '/config.php');
                                         <input type="file" style="display:none" onchange="uploadAvatar('${item.position}', this)" accept="image/*">
                                         ↑
                                     </label>
+                                    <div class="avatar-download-btn" title="Tải thư mục này về" onclick="downloadFolder('${item.position}')">
+                                        ↓
+                                    </div>
                                     <img src="${imgUrl}" id="img-${item.position}">
                                     <div style="font-size: 0.6rem; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.position}">${item.position}</div>
                                 `;
@@ -702,6 +737,26 @@ $config = include(__DIR__ . '/config.php');
                     card.style.opacity = '1';
                     input.value = ''; // Reset input
                 });
+        }
+
+        function downloadFolder(pos) {
+            const currentSavePath = getFullSavePath();
+            const posPath = currentSavePath.replace(/\/$/, '') + '/' + pos;
+            
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'download_folder.php';
+            form.target = '_blank';
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'folderPath';
+            input.value = posPath;
+            
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
         }
 
         function switchTab(tabId, btn) {
@@ -929,14 +984,33 @@ $config = include(__DIR__ . '/config.php');
             });
         }
 
+        let shouldInsertSql = true;
+        const startNoSqlBtn = document.getElementById('startNoSqlBtn');
+
         startBtn.addEventListener('click', () => {
             if (r.files.length === 0) {
                 alert('Hàng đợi trống!');
                 return;
             }
+            shouldInsertSql = true;
             r.upload();
             startBtn.disabled = true;
+            startNoSqlBtn.disabled = true;
             startBtn.innerText = 'Đang upload...';
+            progressContainer.style.display = 'block';
+            document.getElementById('fileErrors').innerHTML = '';
+        });
+
+        startNoSqlBtn.addEventListener('click', () => {
+            if (r.files.length === 0) {
+                alert('Hàng đợi trống!');
+                return;
+            }
+            shouldInsertSql = false;
+            r.upload();
+            startBtn.disabled = true;
+            startNoSqlBtn.disabled = true;
+            startNoSqlBtn.innerText = 'Đang upload...';
             progressContainer.style.display = 'block';
             document.getElementById('fileErrors').innerHTML = '';
         });
@@ -955,6 +1029,19 @@ $config = include(__DIR__ . '/config.php');
         });
 
         r.on('complete', () => {
+            if (!shouldInsertSql) {
+                statusDiv.innerHTML = `<span style="color: #4ade80">Thành công! Đã upload folder (Không thêm vào MySQL).</span>`;
+                const resetBtn = document.createElement('button');
+                resetBtn.className = 'btn';
+                resetBtn.innerText = 'Làm mới để Upload tiếp';
+                resetBtn.style.marginTop = '1rem';
+                resetBtn.style.background = '#10b981';
+                resetBtn.onclick = () => window.location.reload();
+                statusDiv.appendChild(document.createElement('br'));
+                statusDiv.appendChild(resetBtn);
+                return;
+            }
+
             statusDiv.innerText = 'Đang xử lý SQL và tạo bảng...';
 
             // Call process.php to generate SQL
@@ -993,14 +1080,18 @@ $config = include(__DIR__ . '/config.php');
                     } else {
                         statusDiv.innerHTML = `<span style="color: #f87171">Lỗi: ${data.error}</span>`;
                         startBtn.disabled = false;
-                        startBtn.innerText = 'Thử lại';
+                        startNoSqlBtn.disabled = false;
+                        startBtn.innerText = 'Thêm vào MySQL';
+                        startNoSqlBtn.innerText = 'Không thêm vào MySQL';
                     }
                 })
                 .catch(err => {
                     statusDiv.innerHTML = `<span style="color: #f87171">Lỗi kết nối hoặc xử lý: ${err.message}</span>`;
                     console.error(err);
                     startBtn.disabled = false;
-                    startBtn.innerText = 'Bắt đầu Upload';
+                    startNoSqlBtn.disabled = false;
+                    startBtn.innerText = 'Thêm vào MySQL';
+                    startNoSqlBtn.innerText = 'Không thêm vào MySQL';
                 });
         });
 
