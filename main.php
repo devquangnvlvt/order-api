@@ -516,8 +516,9 @@ $config = include(__DIR__ . '/config.php');
 
         <!-- Cột 3: Avatar Preview -->
         <div class="column col-queue">
-            <div class="col-header">
+            <div class="col-header d-flex">
                 <h2>Avatar data</h2>
+                <input type="text" class="form-group" value="https://lvtglobal.tech/" readonly>
             </div>
             <div class="col-body" style="padding: 1rem;">
                 <div id="avatarList"
@@ -742,17 +743,17 @@ $config = include(__DIR__ . '/config.php');
         function downloadFolder(pos) {
             const currentSavePath = getFullSavePath();
             const posPath = currentSavePath.replace(/\/$/, '') + '/' + pos;
-            
+
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = 'download_folder.php';
             form.target = '_blank';
-            
+
             const input = document.createElement('input');
             input.type = 'hidden';
             input.name = 'folderPath';
             input.value = posPath;
-            
+
             form.appendChild(input);
             document.body.appendChild(form);
             form.submit();
