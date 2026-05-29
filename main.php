@@ -389,6 +389,33 @@ $config = include(__DIR__ . '/config.php');
         .avatar-download-btn:hover {
             background: #10b981;
         }
+
+        .avatar-view-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 4.2rem;
+            background: rgba(15, 23, 42, 0.8);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 0.8rem;
+            border: 1px solid #334155;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .avatar-card:hover .avatar-view-btn {
+            opacity: 1;
+        }
+
+        .avatar-view-btn:hover {
+            background: #10b981;
+        }
     </style>
 </head>
 
@@ -641,18 +668,23 @@ $config = include(__DIR__ . '/config.php');
                                 let relativePath = currentSavePath.replace(/\\/g, '/').replace(baseUploadPath, '').replace(/^\//, '');
                                 if (relativePath && !relativePath.endsWith('/')) relativePath += '/';
 
-                                const imgUrl = item.hasAvatar
-                                    ? `${avatarBaseUrl}/${relativePath}${item.position}/avatar.png?v=${Date.now()}`
-                                    : 'https://via.placeholder.com/150?text=No+Avatar';
+                                const imgUrl = item.hasAvatar ?
+                                    `${avatarBaseUrl}/${relativePath}${item.position}/avatar.png?v=${Date.now()}` :
+                                    'https://via.placeholder.com/150?text=No+Avatar';
 
                                 av.innerHTML = `
                                     <label class="avatar-upload-btn" title="Thay thế avatar">
                                         <input type="file" style="display:none" onchange="uploadAvatar('${item.position}', this)" accept="image/*">
                                         ↑
                                     </label>
+
                                     <div class="avatar-download-btn" title="Tải thư mục này về" onclick="downloadFolder('${item.position}')">
                                         ↓
                                     </div>
+                                    <div class="avatar-view-btn" title="Xem bộ tùy biến nhân vật" onclick="viewCreator('${item.position}')">
+                                       👁️
+                                    </div>
+                                    
                                     <img src="${imgUrl}" id="img-${item.position}">
                                     <div style="font-size: 0.6rem; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.position}">${item.position}</div>
                                 `;
@@ -720,9 +752,9 @@ $config = include(__DIR__ . '/config.php');
             card.style.opacity = '0.5';
 
             fetch('upload_avatar.php', {
-                method: 'POST',
-                body: formData
-            })
+                    method: 'POST',
+                    body: formData
+                })
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'success') {
@@ -760,6 +792,13 @@ $config = include(__DIR__ . '/config.php');
             document.body.removeChild(form);
         }
 
+        function viewCreator(pos) {
+            const table = tableNameInput.value.trim();
+            const currentSavePath = getFullSavePath();
+            const url = `character-creator.php?position=${encodeURIComponent(pos)}&table=${encodeURIComponent(table)}&savePath=${encodeURIComponent(currentSavePath)}`;
+            window.open(url, '_blank');
+        }
+
         function switchTab(tabId, btn) {
             // Update buttons
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -778,7 +817,7 @@ $config = include(__DIR__ . '/config.php');
         Sortable.create(sortableList, {
             animation: 150,
             ghostClass: 'ghost',
-            onEnd: function () {
+            onEnd: function() {
                 updateLevelsInDB();
             }
         });
@@ -797,9 +836,9 @@ $config = include(__DIR__ . '/config.php');
             positions.forEach(p => formData.append('positions[]', p));
 
             fetch('update_levels.php', {
-                method: 'POST',
-                body: formData
-            })
+                    method: 'POST',
+                    body: formData
+                })
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'success') {
@@ -825,9 +864,9 @@ $config = include(__DIR__ . '/config.php');
             formData.append('positions[]', pos);
 
             fetch('delete_positions.php', {
-                method: 'POST',
-                body: formData
-            })
+                    method: 'POST',
+                    body: formData
+                })
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'success') {
@@ -851,9 +890,9 @@ $config = include(__DIR__ . '/config.php');
             formData.append('tableName', table);
 
             fetch('truncate_table.php', {
-                method: 'POST',
-                body: formData
-            })
+                    method: 'POST',
+                    body: formData
+                })
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'success') {
@@ -1056,12 +1095,14 @@ $config = include(__DIR__ . '/config.php');
             }
 
             fetch('process.php', {
-                method: 'POST',
-                body: formData
-            })
+                    method: 'POST',
+                    body: formData
+                })
                 .then(res => {
                     if (!res.ok) {
-                        return res.text().then(text => { throw new Error(`Server ${res.status}: ${text}`) });
+                        return res.text().then(text => {
+                            throw new Error(`Server ${res.status}: ${text}`)
+                        });
                     }
                     return res.json();
                 })
