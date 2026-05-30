@@ -21,7 +21,7 @@ $pageTitle = $position ? "Xem: {$position}" : "Character Creator";
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title><?= htmlspecialchars($pageTitle) ?> - Cloudflare Tool</title>
+  <title><?= htmlspecialchars($pageTitle) ?> - Check data</title>
   <link rel="stylesheet" href="css/character-creator.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
@@ -81,7 +81,7 @@ $pageTitle = $position ? "Xem: {$position}" : "Character Creator";
 
   <!-- Top Navigation Bar -->
   <div class="cf-topbar">
-    <a href="main.php">← Quay lại Cloudflare</a>
+    <a href="main.php">← Quay lại upload data</a>
     <span class="cf-title">Character Creator</span>
     <?php if ($position): ?>
       <span class="cf-badge"><?= htmlspecialchars($position) ?></span>
@@ -195,7 +195,7 @@ $pageTitle = $position ? "Xem: {$position}" : "Character Creator";
     </div>
 
     <div style="text-align:center; padding:10px; font-size:12px; color:#666;">
-      Cloudflare Tool &mdash; Character Creator &copy; 2026
+      Check data &mdash; Character Creator &copy; 2026
     </div>
   </div>
 
@@ -425,7 +425,7 @@ $pageTitle = $position ? "Xem: {$position}" : "Character Creator";
             <p><b>1</b>: Vùng bộ phận &nbsp; <b>2</b>: Vùng item &nbsp; <b>3</b>: Vùng màu</p>
           </section>
           <div class="info-box p-15 m-t-20">
-            <p class="font-13" style="color:#1976d2;">Cloudflare Tool &mdash; Character Creator</p>
+            <p class="font-13" style="color:#1976d2;">Check data &mdash; Character Creator</p>
           </div>
         </div>
       </div>
