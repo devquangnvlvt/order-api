@@ -1,4 +1,12 @@
-{
-    "email": "quangnv",
-    "password": "quangnv@"
-}
+[
+    {
+        "email": "quangnv",
+        "password": "quangnv@",
+        "role":"admin"
+    },
+    {
+        "email": "tramcmc",
+        "password": "tramcmc",
+         "role":"cmc"
+    }
+]

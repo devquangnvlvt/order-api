@@ -12,10 +12,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = $_POST['email'] ?? '';
     $password = $_POST['password'] ?? '';
 
-    $userData = json_decode(file_get_contents('user.json'), true);
+    $users = json_decode(file_get_contents('user.json'), true);
+    $found = null;
+    foreach ($users as $u) {
+        if ($u['email'] === $email && $u['password'] === $password) {
+            $found = $u;
+            break;
+        }
+    }
 
-    if ($email === $userData['email'] && $password === $userData['password']) {
-        $_SESSION['user_id'] = $email;
+    if ($found) {
+        $_SESSION['user_id'] = $found['email'];
+        $_SESSION['user_role'] = $found['role'];
         header('Location: main.php');
         exit;
     } else {

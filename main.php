@@ -468,12 +468,18 @@ $config = include(__DIR__ . '/config.php');
                     <input type="hidden" id="savePath" value="<?php echo htmlspecialchars($basePath); ?>">
                 </div>
 
-                <div class="upload-area" id="dropTarget">
+                <div class="upload-area" id="dropTarget" <?php if (!isAdmin()): ?>style="display:none"<?php endif; ?>>
                     <p>Kéo thả hoặc nhấn để chọn <b>Thư mục (Folder)</b> bộ ảnh</p>
                     <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none">
                     <button class="btn" style="background: #1e293b; border: 1px solid var(--primary);"
                         onclick="document.getElementById('folderInput').click()">+ Thêm Folder</button>
                 </div>
+
+                <?php if (!isAdmin()): ?>
+                <div style="margin-top:1rem; padding:0.75rem; border-radius:0.5rem; background:#1e293b; border:1px solid #f59e0b; color:#f59e0b; font-size:0.875rem;">
+                     Tài khoản của bạn chỉ có quyền xem. 
+                </div>
+                <?php endif; ?>
 
                 <div id="alertArea"
                     style="margin-top: 1rem; padding: 0.75rem; border-radius: 0.5rem; background: #1e293b; border: 1px solid #334155; font-size: 0.875rem; display: none; line-height: 1.5;">
@@ -560,6 +566,7 @@ $config = include(__DIR__ . '/config.php');
     <script>
         const avatarBaseUrl = '<?php echo rtrim($config['avatar_base_url'], '/'); ?>';
         const baseUploadPath = '<?php echo rtrim(str_replace('\\', '/', $config['upload_path']), '/'); ?>';
+        const IS_ADMIN = <?php echo isAdmin() ? 'true' : 'false'; ?>;
 
         const tableNameInput = document.getElementById('tableName');
         const tableStatus = document.getElementById('tableStatus');
@@ -797,6 +804,28 @@ $config = include(__DIR__ . '/config.php');
             const currentSavePath = getFullSavePath();
             const url = `character-creator.php?position=${encodeURIComponent(pos)}&table=${encodeURIComponent(table)}&savePath=${encodeURIComponent(currentSavePath)}`;
             window.open(url, '_blank');
+        }
+
+        async function generateBgJson(pos) {
+            const currentSavePath = getFullSavePath();
+            const btn = event.currentTarget;
+            const origText = btn.innerHTML;
+            btn.innerHTML = '⏳';
+            btn.style.pointerEvents = 'none';
+            try {
+                const res = await fetch(`api.php?action=generate_bg_json&savePath=${encodeURIComponent(currentSavePath)}&kit=${encodeURIComponent(pos)}`);
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✅ Tạo bg.json thành công!\n\nCác mục:\n${Object.entries(data.data).map(([k,v]) => `• ${k}: ${v.length} category, ${v.reduce((s,c)=>s+c.quantity,0)} file`).join('\n')}`);
+                } else {
+                    alert('❌ Lỗi: ' + data.message);
+                }
+            } catch(e) {
+                alert('❌ Lỗi kết nối: ' + e.message);
+            } finally {
+                btn.innerHTML = origText;
+                btn.style.pointerEvents = '';
+            }
         }
 
         function switchTab(tabId, btn) {
@@ -1068,7 +1097,43 @@ $config = include(__DIR__ . '/config.php');
             errDiv.appendChild(p);
         });
 
+        // Tự động tạo bg.json nếu upload có chứa folder bg/
+        async function tryGenerateBgJson() {
+            // Kiểm tra xem trong danh sách file upload có file nào bắt đầu bằng bg/ không
+            const hasBg = r.files.some(f => f.relativePath && f.relativePath.startsWith('bg/'));
+            if (!hasBg) return;
+
+            const currentSavePath = getFullSavePath();
+            const firstFile = r.files[0];
+            const parts = firstFile.relativePath.split('/');
+
+            // kit luôn là "bg" — PHP sẽ scan data/bg/ và đặt bg.json trong data/
+            const kit = (parts[0] === 'bg') ? 'bg' : parts[0] + '/bg';
+
+            try {
+                const res = await fetch(`api.php?action=generate_bg_json&savePath=${encodeURIComponent(currentSavePath)}&kit=${encodeURIComponent(kit)}`);
+                const data = await res.json();
+                if (data.success) {
+                    console.log('[BG JSON] Tạo thành công:', data.data);
+                    const statusDiv = document.getElementById('uploadStatus');
+                    if (statusDiv) {
+                        const note = document.createElement('div');
+                        note.style.cssText = 'color:#4ade80;font-size:0.8rem;margin-top:4px;';
+                        note.textContent = '✅ Đã tạo bg.json tự động';
+                        statusDiv.appendChild(note);
+                    }
+                } else {
+                    console.warn('[BG JSON] Lỗi:', data.message);
+                }
+            } catch(e) {
+                console.warn('[BG JSON] Lỗi kết nối:', e.message);
+            }
+        }
+
         r.on('complete', () => {
+            // Nếu upload có folder bg → tự động tạo bg.json
+            tryGenerateBgJson();
+
             if (!shouldInsertSql) {
                 statusDiv.innerHTML = `<span style="color: #4ade80">Thành công! Đã upload folder (Không thêm vào MySQL).</span>`;
                 const resetBtn = document.createElement('button');

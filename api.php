@@ -96,6 +96,20 @@ if ($action === 'file') {
 }
 
 // ==================== ROUTE DISPATCHER ====================
+// Các action chỉ dành cho admin
+$adminOnlyActions = [
+    'rename_folder', 'delete_part', 'merge_layers', 'create_thumb',
+    'auto_create_thumbs', 'delete_all_thumbs', 'delete_file', 'rename_file',
+    'flatten_colors', 'batch_delete_reorder', 'reorder_images', 'rename_color_folder',
+    'delete_color_folders', 'upload_file', 'crop_batch_thumbs', 'create_nav',
+    'reorder_parts', 'batch_merge_layers', 'fix_color_code', 'fix_all_part_colors',
+    'fix_colors_by_point', 'generate_bg_json',
+];
+if (in_array($action, $adminOnlyActions) && !isAdmin()) {
+    http_response_code(403);
+    die(json_encode(['success' => false, 'message' => 'Forbidden: chỉ admin mới có quyền thực hiện thao tác này']));
+}
+
 try {
     switch ($action) {
         case 'get_kits_list':   handleGetKitsList();   break;
@@ -124,6 +138,7 @@ try {
         case 'fix_color_code':  handleFixColorCode();  break;
         case 'fix_all_part_colors': handleFixAllPartColors(); break;
         case 'fix_colors_by_point': handleFixColorsByPoint(); break;
+        case 'generate_bg_json': handleGenerateBgJson(); break;
         default:
             echo json_encode(['success' => false, 'message' => 'Unknown action: ' . $action]);
     }
@@ -1474,4 +1489,88 @@ function handleFixColorsByPoint() {
     }
 
     echo json_encode(['success' => true, 'processed_count' => $processedCount, 'errors' => $errors, 'message' => "Đã sửa {$processedCount} folder màu theo điểm ({$px},{$py})"]);
+}
+
+// ==================== BG JSON GENERATOR ====================
+function handleGenerateBgJson() {
+    $kitFolder = jp('kit'); // VD: "3" hoặc folder chứa bg/
+    if (!$kitFolder) { echo json_encode(['success' => false, 'message' => 'Missing kit']); return; }
+
+    $base    = getKitBasePath();
+    $kitPath = safe_join($base, $kitFolder);
+
+    // Fallback thêm /data nếu không tìm thấy
+    if (!is_dir($kitPath)) {
+        $kitPathData = safe_join(rtrim($base, '/') . '/data', $kitFolder);
+        if (is_dir($kitPathData)) $kitPath = $kitPathData;
+    }
+
+    if (!is_dir($kitPath)) {
+        echo json_encode(['success' => false, 'message' => 'Kit not found']); return;
+    }
+
+    $bgPath = $kitPath . '/bg';
+    if (!is_dir($bgPath)) {
+        // Nếu kit chính là folder bg rồi thì dùng luôn
+        if (strtolower(basename($kitPath)) === 'bg') {
+            $bgPath = $kitPath;
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Folder bg không tồn tại trong kit này']); return;
+        }
+    }
+
+    $imgExts = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+    $result  = [];
+
+    // Duyệt các folder con trong bg/ (VD: background, sticker)
+    $topFolders = array_values(array_filter(
+        array_diff(scandir($bgPath), ['.', '..']),
+        fn($e) => is_dir($bgPath . '/' . $e)
+    ));
+    usort($topFolders, 'natural_sort_cmp');
+
+    foreach ($topFolders as $topFolder) {
+        $topPath    = $bgPath . '/' . $topFolder;
+        $categories = [];
+
+        // Tìm các folder con (category) trong topFolder
+        $subEntries = array_diff(scandir($topPath), ['.', '..']);
+        $subFolders = array_values(array_filter($subEntries, fn($e) => is_dir($topPath . '/' . $e)));
+        usort($subFolders, 'natural_sort_cmp');
+
+        if (empty($subFolders)) {
+            // Không có folder con → category: "", đếm file ảnh trực tiếp trong topFolder
+            $count = count(array_filter(
+                array_diff(scandir($topPath), ['.', '..']),
+                fn($f) => is_file($topPath . '/' . $f) && in_array(strtolower(pathinfo($f, PATHINFO_EXTENSION)), $imgExts)
+            ));
+            $categories[] = ['category' => '', 'quantity' => $count];
+        } else {
+            // Có folder con → mỗi folder con là 1 category
+            foreach ($subFolders as $sub) {
+                $subPath = $topPath . '/' . $sub;
+                $count   = count(array_filter(
+                    array_diff(scandir($subPath), ['.', '..']),
+                    fn($f) => is_file($subPath . '/' . $f) && in_array(strtolower(pathinfo($f, PATHINFO_EXTENSION)), $imgExts)
+                ));
+                $categories[] = ['category' => $sub, 'quantity' => $count];
+            }
+        }
+
+        $result[$topFolder] = $categories;
+    }
+
+    // Ghi bg.json bên trong folder bg/
+    $jsonPath = $bgPath . '/bg.json';
+    $jsonContent = json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    if (file_put_contents($jsonPath, $jsonContent) === false) {
+        echo json_encode(['success' => false, 'message' => 'Không thể ghi file bg.json']); return;
+    }
+
+    echo json_encode([
+        'success'  => true,
+        'message'  => 'Đã tạo bg.json thành công',
+        'path'     => $jsonPath,
+        'data'     => $result,
+    ]);
 }
