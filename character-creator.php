@@ -34,7 +34,7 @@ $pageTitle = $position ? "Xem: {$position}" : "Character Creator";
       background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
       color: #f8fafc;
       padding: 10px 20px;
-      display: flex;
+      display: none;
       align-items: center;
       gap: 15px;
       font-size: 14px;
