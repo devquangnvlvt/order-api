@@ -1,6 +1,10 @@
 <?php
 require_once 'auth.php';
 restrictApiAccess();
+if (!isAdmin()) {
+    http_response_code(403);
+    die(json_encode(['error' => 'Forbidden: admin only']));
+}
 header('Content-Type: application/json');
 
 $config = include(__DIR__ . '/config.php');

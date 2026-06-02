@@ -448,7 +448,7 @@ $config = include(__DIR__ . '/config.php');
                         </label>
                     </div>
                 </div>
-
+                     <?php if (!isAdmin()): ?>
                 <div id="tableOptions"
                     style="display: none; margin-bottom: 1.5rem; padding: 1rem; background: #1e293b; border-radius: 0.5rem; border: 1px solid #334155;">
                     <div id="existingPositions"
@@ -457,7 +457,7 @@ $config = include(__DIR__ . '/config.php');
                         style="background: #ef4444; font-size: 0.75rem; padding: 0.5rem 1rem; margin-top: 0; width: auto;">Xóa
                         toàn bộ bảng</button>
                 </div>
-
+                        <?php endif; ?>
                 <?php $basePath = $config['upload_path'] ?? 'D:/web/laragon/www/upload'; ?>
                 <div class="form-group">
                     <label for="subFolder">Chọn hoặc nhập tên Folder con tại: <span
@@ -639,7 +639,7 @@ $config = include(__DIR__ . '/config.php');
 
                         const avatarList = document.getElementById('avatarList');
                         avatarList.innerHTML = '';
-
+                        
                         if (data.positions && data.positions.length > 0) {
                             existingPositions.innerHTML = '<b>Các Position đã có (Nhấn dấu x để xóa):</b><br>';
                             const sortList = document.getElementById('sortableList');
