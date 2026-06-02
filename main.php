@@ -448,7 +448,7 @@ $config = include(__DIR__ . '/config.php');
                         </label>
                     </div>
                 </div>
-                     <?php if (!isAdmin()): ?>
+                    
                 <div id="tableOptions"
                     style="display: none; margin-bottom: 1.5rem; padding: 1rem; background: #1e293b; border-radius: 0.5rem; border: 1px solid #334155;">
                     <div id="existingPositions"
@@ -457,7 +457,7 @@ $config = include(__DIR__ . '/config.php');
                         style="background: #ef4444; font-size: 0.75rem; padding: 0.5rem 1rem; margin-top: 0; width: auto;">Xóa
                         toàn bộ bảng</button>
                 </div>
-                        <?php endif; ?>
+                
                 <?php $basePath = $config['upload_path'] ?? 'D:/web/laragon/www/upload'; ?>
                 <div class="form-group">
                     <label for="subFolder">Chọn hoặc nhập tên Folder con tại: <span
@@ -566,7 +566,7 @@ $config = include(__DIR__ . '/config.php');
     <script>
         const avatarBaseUrl = '<?php echo rtrim($config['avatar_base_url'], '/'); ?>';
         const baseUploadPath = '<?php echo rtrim(str_replace('\\', '/', $config['upload_path']), '/'); ?>';
-        const IS_ADMIN = <?php echo isAdmin() ? 'true' : 'false'; ?>;
+     
 
         const tableNameInput = document.getElementById('tableName');
         const tableStatus = document.getElementById('tableStatus');
@@ -907,6 +907,8 @@ $config = include(__DIR__ . '/config.php');
                 .catch(err => alert('Lỗi kết nối: ' + err.message));
         }
 
+        
+
         truncateBtn.addEventListener('click', () => {
             const table = tableNameInput.value.trim();
             if (!table) return;
@@ -1205,6 +1207,8 @@ $config = include(__DIR__ . '/config.php');
         r.on('error', (message, file) => {
             console.error('Lỗi tổng quát:', message);
         });
+
+    
     </script>
 </body>
 
