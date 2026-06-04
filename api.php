@@ -802,55 +802,110 @@ function handleAutoCreateThumbs() {
     $kitFolder  = jp('kit');
     $folderName = jp('folder');
     $color      = jp('color');
-    if (!$kitFolder || !$folderName) { echo json_encode(['success' => false, 'message' => 'Missing parameters']); return; }
+    if (!$kitFolder) { echo json_encode(['success' => false, 'message' => 'Missing kit']); return; }
 
-    $base      = getKitBasePath();
-    $kitPath   = safe_join($base, $kitFolder);
-    $partPath  = safe_join($kitPath, $folderName);
+    $base    = getKitBasePath();
+    $kitPath = safe_join($base, $kitFolder);
 
     $imgPat = '/^(\d+)\.(png|webp|jpg|jpeg)$/i';
-    $srcDir = ($color && $color !== 'default') ? safe_join($partPath, $color) : $partPath;
+    $totalCreated = 0;
+    $totalSkipped = 0;
+    $details = [];
 
-    $count = 0;
-    foreach (array_diff(scandir($srcDir), ['.','..']) as $f) {
-        if (!is_file($srcDir . '/' . $f) || !preg_match($imgPat, $f, $m)) continue;
-        $idx = $m[1];
-        $dst = safe_join($partPath, "thumb_{$idx}.png");
-        if (createThumbFrom($srcDir . '/' . $f, $dst, 44, 44)) $count++;
+    // Nếu có folder cụ thể → chỉ tạo cho folder đó
+    // Nếu không → scan toàn bộ sub-folder trong kit
+    $foldersToProcess = [];
+    if ($folderName) {
+        $foldersToProcess[] = $folderName;
+    } else {
+        foreach (array_diff(scandir($kitPath), ['.','..']) as $entry) {
+            if (is_dir($kitPath . '/' . $entry)) $foldersToProcess[] = $entry;
+        }
     }
-    echo json_encode(['success' => true, 'message' => "Created {$count} thumbnails"]);
+
+    foreach ($foldersToProcess as $fn) {
+        $partPath = safe_join($kitPath, $fn);
+        if (!is_dir($partPath)) continue;
+
+        // Xác định thư mục nguồn ảnh
+        $srcDir = ($color && $color !== 'default') ? safe_join($partPath, $color) : $partPath;
+        if (!is_dir($srcDir)) continue;
+
+        $created = 0; $skipped = 0;
+        foreach (array_diff(scandir($srcDir), ['.','..']) as $f) {
+            if (!is_file($srcDir . '/' . $f) || !preg_match($imgPat, $f, $m)) continue;
+            $idx = $m[1];
+            $dst = safe_join($partPath, "thumb_{$idx}.png");
+            if (file_exists($dst)) { $skipped++; continue; }
+            if (createThumbFrom($srcDir . '/' . $f, $dst, 44, 44)) $created++;
+        }
+        $totalCreated += $created;
+        $totalSkipped += $skipped;
+        if ($created > 0) $details[] = ['folder' => $fn, 'created' => $created];
+    }
+
+    echo json_encode([
+        'success' => true,
+        'message' => "Created {$totalCreated} thumbnails, skipped {$totalSkipped}",
+        'stats'   => [
+            'total_folders' => count($foldersToProcess),
+            'total_images'  => $totalCreated + $totalSkipped,
+            'created_thumbs'=> $totalCreated,
+            'skipped_thumbs'=> $totalSkipped,
+            'details'       => $details,
+        ],
+    ]);
 }
 
 function handleDeleteAllThumbs() {
     $kitFolder  = jp('kit');
     $folderName = jp('folder');
-    if (!$kitFolder || !$folderName) { echo json_encode(['success' => false, 'message' => 'Missing parameters']); return; }
+    if (!$kitFolder) { echo json_encode(['success' => false, 'message' => 'Missing kit']); return; }
 
-    $base      = getKitBasePath();
-    $kitPath   = safe_join($base, $kitFolder);
-    $partPath  = safe_join($kitPath, $folderName);
+    $base    = getKitBasePath();
+    $kitPath = safe_join($base, $kitFolder);
 
-    $count = 0;
-    foreach (array_diff(scandir($partPath), ['.','..']) as $f) {
-        if (preg_match('/^thumb_\d+\.(png|webp)$/i', $f)) {
-            unlink($partPath . '/' . $f);
-            $count++;
+    $totalDeleted = 0;
+
+    // Nếu có folder cụ thể → xóa thumb trong folder đó
+    // Nếu không → xóa thumb trong toàn bộ sub-folder
+    $foldersToProcess = [];
+    if ($folderName) {
+        $foldersToProcess[] = $folderName;
+    } else {
+        foreach (array_diff(scandir($kitPath), ['.','..']) as $entry) {
+            if (is_dir($kitPath . '/' . $entry)) $foldersToProcess[] = $entry;
         }
     }
-    echo json_encode(['success' => true, 'message' => "Deleted {$count} thumbnails"]);
+
+    foreach ($foldersToProcess as $fn) {
+        $partPath = safe_join($kitPath, $fn);
+        if (!is_dir($partPath)) continue;
+        foreach (array_diff(scandir($partPath), ['.','..']) as $f) {
+            if (preg_match('/^thumb_\d+\.(png|webp)$/i', $f)) {
+                unlink($partPath . '/' . $f);
+                $totalDeleted++;
+            }
+        }
+    }
+
+    echo json_encode(['success' => true, 'message' => "Deleted {$totalDeleted} thumbnails"]);
 }
 
 function handleCropBatchThumbs() {
     $kitFolder  = jp('kit');
     $folderName = jp('folder');
     $color      = jp('color');
-    $cropX      = (int)jp('crop_x', 0);
-    $cropY      = (int)jp('crop_y', 0);
-    $cropW      = (int)jp('crop_w', 44);
-    $cropH      = (int)jp('crop_h', 44);
-    $thumbW     = (int)jp('thumb_w', 44);
-    $thumbH     = (int)jp('thumb_h', 44);
+    $itemNo     = jp('item_no');
+    // JS gửi: x, y, width, height
+    $cropX      = (int)(jp('x') ?? jp('crop_x', 0));
+    $cropY      = (int)(jp('y') ?? jp('crop_y', 0));
+    $cropW      = (int)(jp('width') ?? jp('crop_w', 44));
+    $cropH      = (int)(jp('height') ?? jp('crop_h', 44));
+    $thumbW     = (int)jp('thumb_w', $cropW);
+    $thumbH     = (int)jp('thumb_h', $cropH);
     if (!$kitFolder || !$folderName) { echo json_encode(['success' => false, 'message' => 'Missing parameters']); return; }
+    if ($cropW <= 0 || $cropH <= 0) { echo json_encode(['success' => false, 'message' => 'Invalid crop dimensions']); return; }
 
     $base      = getKitBasePath();
     $kitPath   = safe_join($base, $kitFolder);
@@ -859,12 +914,26 @@ function handleCropBatchThumbs() {
 
     $imgPat = '/^(\d+)\.(png|webp|jpg|jpeg)$/i';
     $count  = 0;
-    foreach (array_diff(scandir($srcDir), ['.','..']) as $f) {
-        if (!is_file($srcDir . '/' . $f) || !preg_match($imgPat, $f, $m)) continue;
-        $idx  = $m[1];
-        $src  = $srcDir . '/' . $f;
-        $dst  = safe_join($partPath, "thumb_{$idx}.png");
-        if (createCroppedThumb($src, $dst, $cropX, $cropY, $cropW, $cropH, $thumbW, $thumbH)) $count++;
+
+    // Nếu có item_no cụ thể → chỉ tạo cho ảnh đó
+    if ($itemNo) {
+        foreach (['png','webp','jpg','jpeg'] as $ext) {
+            $src = $srcDir . '/' . $itemNo . '.' . $ext;
+            if (file_exists($src)) {
+                $dst = safe_join($partPath, "thumb_{$itemNo}.png");
+                if (createCroppedThumb($src, $dst, $cropX, $cropY, $cropW, $cropH, $thumbW, $thumbH)) $count++;
+                break;
+            }
+        }
+    } else {
+        // Tạo cho tất cả ảnh trong folder
+        foreach (array_diff(scandir($srcDir), ['.','..']) as $f) {
+            if (!is_file($srcDir . '/' . $f) || !preg_match($imgPat, $f, $m)) continue;
+            $idx  = $m[1];
+            $src  = $srcDir . '/' . $f;
+            $dst  = safe_join($partPath, "thumb_{$idx}.png");
+            if (createCroppedThumb($src, $dst, $cropX, $cropY, $cropW, $cropH, $thumbW, $thumbH)) $count++;
+        }
     }
     echo json_encode(['success' => true, 'message' => "Created {$count} cropped thumbnails"]);
 }

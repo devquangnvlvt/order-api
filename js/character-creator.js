@@ -3934,50 +3934,8 @@ async function createPartThumbs() {
     return;
   }
 
-  const folderName = currentPart.part.folder;
-
-  // Allow cropping even for default color (single color parts)
-  if (currentColor) {
-    openCropThumbnailModal();
-    return;
-  }
-
-  if (
-    !confirm(
-      `Tạo thumbnail tự động cho bộ phận "${folderName}"?\n\nChỉ tạo thumb cho file chưa có.`,
-    )
-  ) {
-    return;
-  }
-
-  showGlobalLoading(`Đang tạo thumbnail cho ${folderName}...`);
-
-  try {
-    const response = await fetch("/api/auto_create_thumbs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        kit: CURRENT_KIT_FOLDER,
-        folder: folderName,
-      }),
-    });
-
-    const result = await response.json();
-    hideGlobalLoading();
-
-    if (result.success) {
-      alert(
-        `✅ Hoàn tất!\n\n✨ Đã tạo thêm: ${result.stats.created_thumbs} thumb.`,
-      );
-      imgVers = Date.now(); // Cập nhật version để xóa cache ảnh
-      loadItems(currentPart.part); // Refresh item grid
-    } else {
-      alert("❌ Lỗi: " + result.message);
-    }
-  } catch (error) {
-    hideGlobalLoading();
-    alert("❌ Lỗi kết nối: " + error.message);
-  }
+  // Luôn mở modal crop để tạo thumb theo tọa độ
+  openCropThumbnailModal();
 }
 
 // Delete thumbs for current part
@@ -4098,10 +4056,10 @@ let cropX = 100,
 let cropScale = 1;
 
 function openCropThumbnailModal(itemNo = null) {
-  if (!currentPart || !currentColor) return;
+  if (!currentPart) return;
 
   const folder = currentPart.part.folder;
-  const color = currentColor;
+  const color = currentColor || "default";
   currentCropItemNo = itemNo;
 
   const titleSuffix = itemNo ? ` cho ảnh #${itemNo}` : "";
@@ -4276,7 +4234,7 @@ async function confirmBatchCrop() {
 
   const scopeMsg = currentCropItemNo
     ? `cho duy nhất ảnh #${currentCropItemNo}`
-    : `hàng loạt cho tất cả ảnh trong folder màu "${currentColor}"`;
+    : `hàng loạt cho tất cả ảnh trong folder "${currentColor && currentColor !== 'default' ? 'màu ' + currentColor : 'bộ phận ' + currentPart.part.folder}"`;
 
   if (
     !confirm(
