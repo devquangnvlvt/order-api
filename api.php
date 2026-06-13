@@ -139,6 +139,7 @@ try {
         case 'fix_all_part_colors': handleFixAllPartColors(); break;
         case 'fix_colors_by_point': handleFixColorsByPoint(); break;
         case 'generate_bg_json': handleGenerateBgJson(); break;
+        case 'debug_gd': handleDebugGd(); break;
         default:
             echo json_encode(['success' => false, 'message' => 'Unknown action: ' . $action]);
     }
@@ -1056,20 +1057,32 @@ function handleBatchMergeLayers() {
 }
 
 // ==================== IMAGE UTILITIES ====================
-function createThumbFrom($src, $dst, $w, $h) {
+function loadImageAny($src) {
+    if (!file_exists($src)) return null;
+    // imagecreatefromstring tự detect PNG/JPG/WebP/GIF — không cần WebP support riêng
+    $data = @file_get_contents($src);
+    if (!$data) return null;
+    $img = @imagecreatefromstring($data);
+    if ($img) return $img;
+    // Fallback theo extension
     $ext = strtolower(pathinfo($src, PATHINFO_EXTENSION));
-    $img = null;
-    if ($ext === 'png') $img = @imagecreatefrompng($src);
-    elseif ($ext === 'webp') $img = @imagecreatefromwebp($src);
-    elseif (in_array($ext, ['jpg','jpeg'])) $img = @imagecreatefromjpeg($src);
-    if (!$img) return false;
+    if ($ext === 'png')  return @imagecreatefrompng($src);
+    if ($ext === 'webp' && function_exists('imagecreatefromwebp')) return @imagecreatefromwebp($src);
+    if (in_array($ext, ['jpg','jpeg'])) return @imagecreatefromjpeg($src);
+    return null;
+}
 
+function createThumbFrom($src, $dst, $w, $h) {
+    if (!function_exists('imagecreatetruecolor')) return false;
+    $img = loadImageAny($src);
+    if (!$img) return false;
+    $dstDir = dirname($dst);
+    if (!is_dir($dstDir)) @mkdir($dstDir, 0775, true);
     $iw = imagesx($img); $ih = imagesy($img);
     $thumb = imagecreatetruecolor($w, $h);
     imagealphablending($thumb, false);
     imagesavealpha($thumb, true);
-    $transparent = imagecolorallocatealpha($thumb, 0, 0, 0, 127);
-    imagefill($thumb, 0, 0, $transparent);
+    imagefill($thumb, 0, 0, imagecolorallocatealpha($thumb, 0, 0, 0, 127));
     imagecopyresampled($thumb, $img, 0, 0, 0, 0, $w, $h, $iw, $ih);
     imagedestroy($img);
     $ok = imagepng($thumb, $dst);
@@ -1078,18 +1091,15 @@ function createThumbFrom($src, $dst, $w, $h) {
 }
 
 function createCroppedThumb($src, $dst, $cropX, $cropY, $cropW, $cropH, $thumbW, $thumbH) {
-    $ext = strtolower(pathinfo($src, PATHINFO_EXTENSION));
-    $img = null;
-    if ($ext === 'png') $img = @imagecreatefrompng($src);
-    elseif ($ext === 'webp') $img = @imagecreatefromwebp($src);
-    elseif (in_array($ext, ['jpg','jpeg'])) $img = @imagecreatefromjpeg($src);
+    if (!function_exists('imagecreatetruecolor')) return false;
+    $img = loadImageAny($src);
     if (!$img) return false;
-
+    $dstDir = dirname($dst);
+    if (!is_dir($dstDir)) @mkdir($dstDir, 0775, true);
     $thumb = imagecreatetruecolor($thumbW, $thumbH);
     imagealphablending($thumb, false);
     imagesavealpha($thumb, true);
-    $transparent = imagecolorallocatealpha($thumb, 0, 0, 0, 127);
-    imagefill($thumb, 0, 0, $transparent);
+    imagefill($thumb, 0, 0, imagecolorallocatealpha($thumb, 0, 0, 0, 127));
     imagecopyresampled($thumb, $img, 0, 0, $cropX, $cropY, $thumbW, $thumbH, $cropW, $cropH);
     imagedestroy($img);
     $ok = imagepng($thumb, $dst);
@@ -1642,4 +1652,19 @@ function handleGenerateBgJson() {
         'path'     => $jsonPath,
         'data'     => $result,
     ]);
+}
+
+function handleDebugGd() {
+    $info = [
+        'gd_loaded'    => extension_loaded('gd'),
+        'gd_info'      => function_exists('gd_info') ? gd_info() : null,
+        'png_support'  => function_exists('imagecreatefrompng'),
+        'webp_support' => function_exists('imagecreatefromwebp'),
+        'jpg_support'  => function_exists('imagecreatefromjpeg'),
+        'php_version'  => PHP_VERSION,
+        'memory_limit' => ini_get('memory_limit'),
+        'upload_path'  => getKitBasePath(),
+        'writable'     => is_writable(getKitBasePath()),
+    ];
+    echo json_encode(['success' => true, 'debug' => $info]);
 }
