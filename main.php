@@ -959,6 +959,7 @@ $config = include(__DIR__ . '/config.php');
             simultaneousUploads: 6,
             testChunks: false,
             throttleProgressCallbacks: 1,
+            minFileSize: 0,
             query: () => {
                 return {
                     tableName: tableNameInput.value.trim(),
